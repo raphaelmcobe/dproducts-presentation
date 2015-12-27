@@ -1,0 +1,118 @@
+A very simple shiny application
+========================================================
+author: Raphael Cóbe
+date: 22/12/2015
+
+Goals
+========================================================
+
+- This is a **very** simple exercise to demonstrate the use o **shiny** to create data science applications.
+- The internet movie database, http://imdb.com/, is a website devoted to collecting movie data supplied by studios and fans.
+- It claims to be the biggest movie database on the web and is run by amazon.
+- Data collection process, http://imdb.com/help/show_leaf?infosource.
+- Updated data: http://www.imdb.com/interfaces
+- Live demo:
+    - https://raphaelmcobe.shinyapps.io/DataProduct
+
+User input
+========================================================
+
+- Parameters Input:
+    - A Slide bar to select the time frame for the analysis;
+    - A set of checkboxes for selecting the Movie Genre or combination of Genres;
+        - A movie can belong to more than one genre;
+
+![user input](input.png)
+
+Output: Plot 1 - Number of Movies over the years
+========================================================
+
+As response, a plot with the distribution of movies over the years is generated
+
+```{r echo=FALSE}
+library(dplyr)
+library(rCharts)
+imdb <- read.csv("movies.csv")
+imdb$Count <- 1
+minDate <- "1950"
+maxDate <- "2000"
+require(knitr)
+opts_chunk$set(results = "asis", comment = NA, tidy = F)
+
+imdb$budget <- as.numeric(imdb$budget)
+imdb$rating <- as.numeric(imdb$rating)
+
+filterByGender <- function(genderList, imdb){
+    if(is.null(genderList))
+        return(imdb)
+    expression <- ""
+    for(i in genderList){
+        if(expression!=""){
+            expression <- paste(expression, "&")
+        }
+        expression <- paste(expression, i)
+        expression <- paste(expression, "== 1")
+    }
+    return(subset(imdb,eval(parse(text=expression))))
+
+}
+```
+
+
+```{r tidy=F}
+imdb <- filterByGender(NULL,imdb)
+selectedDataset <- aggregate(imdb$Count, by = list(year = imdb$year), FUN = sum)
+filteredData <- filter(selectedDataset, year > minDate & year < maxDate)
+plot <- nPlot(x ~ year, data = filteredData, type = "multiBarChart")
+```
+
+Output: Plot 1 (Result)
+========================================================
+
+
+```{r inline}
+plot$show('inline', include_assets = TRUE, cdn = TRUE)
+```
+
+
+Output: Plot 2 - Comparison Between Budget and Ratings (averaged)
+=================================================================
+
+The third tab show a chart that compares the growth on budget compared with the average movies rating:
+
+```{r echo=F}
+selectedDataset <- aggregate(imdb$budget, by = list(year = imdb$year), FUN = mean, na.rm=T)
+selectedDatasetRating <- aggregate(imdb$rating, by = list(year = imdb$year), FUN = mean, na.rm=T)
+selectedDataset$rating <- selectedDatasetRating$x
+filteredData <- filter(selectedDataset, year > minDate & year < maxDate)
+```
+
+
+```{r create, tidy = F}
+h <- Highcharts$new()
+h$xAxis(categories = filteredData$year, tickInterval=5, width=480)
+h$yAxis(list(list(title = list(text = 'Budget'))
+             , list(title = list(text = 'Ratings'), opposite = TRUE))
+)
+h$series(name = 'Budget', type = 'spline', data = filteredData$x)
+h$series(name = 'Ratings', type = 'spline', data = filteredData$rating,
+         yAxis = 1)
+```
+
+Output: Plot 2 - Result
+=================================================================
+
+```{r}
+h$show('inline', cdn = TRUE, include_assets = TRUE)
+```
+
+
+Conclusion
+================================================================
+
+- Developing data Products with shiny os quick;
+- Making presentations using RStudio Presentation tool is also quick;
+- Both interfaces look nice and can be used from a simple browser;
+- The publishing tools are also easy to use;
+
+
